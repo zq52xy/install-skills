@@ -1,0 +1,18 @@
+{
+  "name": "install-skills",
+  "source": {
+    "type": "github",
+    "repo": "https://github.com/zq52xy/install-skills",
+    "author": "zq52xy"
+  },
+  "version": {
+    "installed_at": "2026-04-03T18:20:55.430342+00:00",
+    "commit_hash": "7521540",
+    "content_hash": "sha256:7491fdb2a1817aee",
+    "remote_ref": "main"
+  },
+  "checks": {
+    "last_checked": "2026-04-03T18:20:55.430374+00:00",
+    "last_result": "up-to-date"
+  }
+}

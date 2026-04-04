@@ -1,0 +1,164 @@
+# ---------------------------------------------------------------
+# gen_installed.py — 为所有 agent host 生成 INSTALLED.md
+#
+# 描述优先级:
+#   1. SKILLS-CATALOG.md 分类表中的人工描述（简洁、易读）
+#   2. SKILL.md frontmatter 的 description（回退，取完整值）
+#   3. SKILL.md 首行标题（最终回退）
+#
+# 已修复:
+#   - 首次匹配优先，溯源表不再覆盖分类表描述
+#   - YAML frontmatter 正则支持引号/无引号/多行
+#   - 移除 60 字符硬截断，改为 120 字符优雅截断
+#   - 过滤掉错误匹配（作者名、URL、空描述）
+#
+# [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+# ---------------------------------------------------------------
+
+import os, datetime, re
+
+today = datetime.date.today().isoformat()
+catalog_path = os.path.expanduser('~/.claude/skills/SKILLS-CATALOG.md')
+
+hosts = [
+    os.path.expanduser('~/.claude/skills'),
+    os.path.expanduser('~/.codex/skills'),
+    os.path.expanduser('~/.gemini/antigravity/skills'),
+    os.path.expanduser('~/.kiro/skills'),
+    os.path.expanduser('~/.cursor/skills'),
+    os.path.expanduser('~/.agents/skills'),
+]
+
+
+# ---------------------------------------------------------------
+# 辅助: 判断描述是否有效（排除作者名、URL 等误匹配）
+# ---------------------------------------------------------------
+def is_valid_desc(text):
+    if not text or len(text) < 4:
+        return False
+    # 纯粗体标记 = 作者名误匹配
+    if text.startswith('**') and text.endswith('**'):
+        return False
+    # 纯 URL
+    if text.startswith('http://') or text.startswith('https://'):
+        return False
+    # 表头关键词
+    if text in ('用途', '技能', '来源', '触发场景', '作者'):
+        return False
+    return True
+
+
+# ---------------------------------------------------------------
+# 辅助: 优雅截断（在句号或空格处断开）
+# ---------------------------------------------------------------
+def smart_truncate(text, limit=120):
+    if len(text) <= limit:
+        return text
+    # 在 limit 范围内找最后一个句号或逗号
+    cut = text[:limit]
+    for sep in ('。', '，', '. ', ', ', ' '):
+        pos = cut.rfind(sep)
+        if pos > limit // 2:
+            return cut[:pos + len(sep)].rstrip() + '…'
+    return cut.rstrip() + '…'
+
+
+# ---------------------------------------------------------------
+# Step 1: 从 SKILLS-CATALOG.md 分类表构建 skill -> 描述 映射
+# ---------------------------------------------------------------
+catalog_map = {}
+if os.path.isfile(catalog_path):
+    with open(catalog_path, 'r', encoding='utf-8', errors='ignore') as f:
+        for line in f:
+            m = re.match(
+                r'^\|\s*`([^`]+)`\s*\|\s*([^|]+?)\s*\|', line
+            )
+            if not m:
+                continue
+            skill_name = m.group(1).strip()
+            purpose = m.group(2).strip()
+            # 首次匹配优先: 分类表在前，溯源表在后
+            if skill_name and is_valid_desc(purpose):
+                if skill_name not in catalog_map:
+                    catalog_map[skill_name] = purpose
+
+print(f'Loaded {len(catalog_map)} skills from SKILLS-CATALOG.md')
+
+
+# ---------------------------------------------------------------
+# 辅助: 从 SKILL.md 提取 frontmatter description
+# ---------------------------------------------------------------
+def extract_description(skill_md_path):
+    with open(skill_md_path, 'r', encoding='utf-8', errors='ignore') as f:
+        content = f.read(4000)
+
+    # 提取 YAML frontmatter 块
+    fm_match = re.match(r'^---\s*\n(.*?)\n---', content, re.S)
+    if not fm_match:
+        return ''
+
+    frontmatter = fm_match.group(1)
+
+    # 匹配 description 字段（支持引号包裹和无引号）
+    desc_match = re.search(
+        r'^description:\s*(?:"([^"]+)"|\'([^\']+)\'|(.+?))\s*$',
+        frontmatter, re.M
+    )
+    if desc_match:
+        desc = desc_match.group(1) or desc_match.group(2) or desc_match.group(3)
+        desc = desc.strip().replace('|', '—')
+        return smart_truncate(desc)
+
+    return ''
+
+
+# ---------------------------------------------------------------
+# 辅助: 从 SKILL.md 提取首行标题（最终回退）
+# ---------------------------------------------------------------
+def extract_title(skill_md_path):
+    with open(skill_md_path, 'r', encoding='utf-8', errors='ignore') as f:
+        for line in f:
+            line = line.strip()
+            if line.startswith('# ') and not line.startswith('---'):
+                return line[2:].strip()
+    return ''
+
+
+# ---------------------------------------------------------------
+# Step 2: 为每个 host 生成 INSTALLED.md
+# ---------------------------------------------------------------
+bt = '`'
+for host in hosts:
+    if not os.path.isdir(host):
+        continue
+    rows = []
+    for name in sorted(os.listdir(host)):
+        skill_md = os.path.join(host, name, 'SKILL.md')
+        if not os.path.isfile(skill_md):
+            continue
+
+        # 优先级 1: SKILLS-CATALOG 人工描述
+        desc = catalog_map.get(name, '')
+
+        # 优先级 2: SKILL.md frontmatter description
+        if not desc:
+            desc = extract_description(skill_md)
+
+        # 优先级 3: SKILL.md 首行标题
+        if not desc:
+            desc = extract_title(skill_md)
+
+        rows.append((name, desc))
+
+    path = os.path.join(host, 'INSTALLED.md')
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write('# Installed Skills\n\n')
+        f.write(f'> Auto-generated by install-skills. {today}\n')
+        f.write(f'> Total: {len(rows)} skills\n\n')
+        f.write('| 技能 | 用途 |\n')
+        f.write('|------|------|\n')
+        for n, d in rows:
+            f.write(f'| {bt}{n}{bt} | {d} |\n')
+
+    label = host.replace(os.path.expanduser('~'), '~')
+    print(f'{label}: {len(rows)} skills')

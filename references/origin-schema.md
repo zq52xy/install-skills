@@ -71,7 +71,7 @@
 | 入口 | 动作 |
 |------|------|
 | A（GitHub 安装） | 克隆后立即生成，commit_hash 从 `git rev-parse HEAD` 获取 |
-| B（Claude 同步） | 如果 Claude 目录已有 `.origin.json` 则随符号链接继承；如果没有则补写（type=`local`） |
+| B（Claude 同步） | 符号链接的 host 自动继承 Claude 目录的 `.origin.json`；Kiro 用 `cp -r` 时一并复制；如果没有则补写（type=`local`） |
 | C（本地安装） | 生成 type=`local`，无 commit_hash，仅 content_hash |
 | E（溯源成功） | 补写/更新 source 字段，添加 commit_hash |
 | F（版本检查） | 更新 checks 字段 |
@@ -100,7 +100,7 @@ def content_hash(skill_dir):
 |------|------|
 | 位置 | `~/.claude/skills/<skill-name>/.origin.json` |
 | 可见性 | 不写入 SKILLS-CATALOG（避免污染人类可读文档） |
-| 继承 | 符号链接的 host 自动继承 Claude 目录的 `.origin.json` |
+| 继承 | 符号链接的 host 自动继承 Claude 目录的 `.origin.json`；Kiro 通过 `cp -r` 获得独立副本 |
 | 冲突 | 覆盖安装时，旧 `.origin.json` 被新的替换 |
 | 用户自建 | type=`user-created`，无 repo/commit，仅 content_hash |
 

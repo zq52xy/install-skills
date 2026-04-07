@@ -83,6 +83,7 @@ def force_remove_dir(path):
 |-----------|--------------|--------|
 | `git clone --depth 1` 浅克隆 | 完整克隆整个仓库 | skill 仓库可能有大量历史 |
 | 先检查**所有 host** 的冲突再安装 | 只检查 Claude 目录 | 其他 host 可能有同名 skill |
+| Kiro 用 `cp -r` 实体复制 | 给 Kiro 创建符号链接 | Kiro 无法识别 symlink 的 skill |
 | 用 Python `os.symlink` 创建符号链接 | 用 bash `ln -s`（Windows） | Windows 上 bash ln -s 创建副本 |
 | 用 `force_remove_dir` 删目录 | 直接 `shutil.rmtree` | Python 3.12+ rmtree 拒绝删符号链接目录 |
 | 复制 skill 时跳过 `.git` 子目录 | 连 `.git` 一起复制 | `.git/objects/` 只读锁导致删除失败 |

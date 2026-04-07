@@ -25,7 +25,6 @@ hosts = [
     os.path.expanduser('~/.codex/skills'),
     os.path.expanduser('~/.gemini/antigravity/skills'),
     os.path.expanduser('~/.kiro/skills'),
-    os.path.expanduser('~/.cursor/skills'),
     os.path.expanduser('~/.agents/skills'),
 ]
 

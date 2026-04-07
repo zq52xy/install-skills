@@ -1,6 +1,6 @@
 ---
 name: install-skills
-description: Install agent skill packs into all 6 agent hosts (Claude, Codex, Gemini, Kiro, Cursor, .agents) from eight entry points — GitHub repos, local paths, post-install sync, standalone catalog refresh, provenance investigation, version check, batch update, or cleanup. Trigger when the user provides a GitHub URL or local path and says "install this", "add this skill", "装这个", "把这个装上", "把这个仓库的 skill 都装上", or "add these skills". Also trigger when the user says "我下载了一个 skill 包", "装一下这个目录", "这个文件夹里有 skill", provides a local folder/ZIP path, or mentions they downloaded skills from GitHub manually. Also trigger AFTER `npx skills add` or `find-skills` installs a skill into Claude only — detect new skills and sync to other hosts. Also trigger when the user says "更新目录", "刷新 catalog", "生成 installed", "refresh catalog", "update catalog", or wants to regenerate SKILLS-CATALOG.md and INSTALLED.md without installing new skills. Also trigger when the user says "溯源", "排查来源", "查来路", "trace origin", "find source", "这些 skill 哪来的", "哪些 skill 没有来源", or wants to investigate unknown/unattributed skills. Also trigger when the user says "检查更新", "check updates", "哪些 skill 过时了", "skill 有新版吗", "update check", or wants to check if installed skills have newer versions available. Also trigger when the user says "批量更新", "全部更新", "update all", or wants to update all outdated skills at once. Also trigger when the user says "清理", "清理冗余", "删除重复", "clean up", "remove duplicates", or wants to detect and remove redundant/obsolete skills. Handles conflict resolution, prefix naming, multi-host sync, marketplace detection, provenance investigation, version tracking via .origin.json, batch update, redundancy cleanup, SKILLS-CATALOG.md updates, and per-host INSTALLED.md generation.
+description: Install agent skill packs into all 5 agent hosts (Claude, Codex, Gemini, Kiro, .agents) from eight entry points — GitHub repos, local paths, post-install sync, standalone catalog refresh, provenance investigation, version check, batch update, or cleanup. Trigger when the user provides a GitHub URL or local path and says "install this", "add this skill", "装这个", "把这个装上", "把这个仓库的 skill 都装上", or "add these skills". Also trigger when the user says "我下载了一个 skill 包", "装一下这个目录", "这个文件夹里有 skill", provides a local folder/ZIP path, or mentions they downloaded skills from GitHub manually. Also trigger AFTER `npx skills add` or `find-skills` installs a skill into Claude only — detect new skills and sync to other hosts. Also trigger when the user says "更新目录", "刷新 catalog", "生成 installed", "refresh catalog", "update catalog", or wants to regenerate SKILLS-CATALOG.md and INSTALLED.md without installing new skills. Also trigger when the user says "溯源", "排查来源", "查来路", "trace origin", "find source", "这些 skill 哪来的", "哪些 skill 没有来源", or wants to investigate unknown/unattributed skills. Also trigger when the user says "检查更新", "check updates", "哪些 skill 过时了", "skill 有新版吗", "update check", or wants to check if installed skills have newer versions available. Also trigger when the user says "批量更新", "全部更新", "update all", or wants to update all outdated skills at once. Also trigger when the user says "清理", "清理冗余", "删除重复", "clean up", "remove duplicates", or wants to detect and remove redundant/obsolete skills. Handles conflict resolution, prefix naming, multi-host sync, marketplace detection, provenance investigation, version tracking via .origin.json, batch update, redundancy cleanup, SKILLS-CATALOG.md updates, and per-host INSTALLED.md generation.
 allowed-tools:
   - Bash
   - Read
@@ -11,7 +11,7 @@ allowed-tools:
 
 # 从 GitHub 安装技能包
 
-将任意 GitHub 仓库中的技能批量安装到全部 6 个 agent host。
+将任意 GitHub 仓库中的技能批量安装到全部 5 个 agent host。
 
 ## Agent Host 目录
 
@@ -21,7 +21,6 @@ allowed-tools:
 | Codex | `~/.codex/skills/` |
 | Gemini | `~/.gemini/antigravity/skills/` |
 | Kiro | `~/.kiro/skills/` |
-| Cursor | `~/.cursor/skills/` |
 | .agents | `~/.agents/skills/` |
 
 ## 工作流
@@ -31,7 +30,7 @@ allowed-tools:
 | 入口 | 触发场景 | 流程概述 |
 |------|---------|---------|
 | **A. GitHub 安装** | 用户给 GitHub URL 或说"装这个" | marketplace 检测 → clone → 冲突检查 → 安装 → .origin.json → 更新目录 |
-| **B. Claude 同步** | `npx skills add` 后同步到其他 host | 检测新 skill → 符号链接到 5 host → 更新目录 |
+| **B. Claude 同步** | `npx skills add` 后同步到其他 host | 检测新 skill → Kiro 用 `cp -r`，其余符号链接到 3 host → 更新目录 |
 | **C. 本地安装** | 用户给本地路径或 ZIP | 定位 SKILL.md → 复用入口 A 流程 |
 | **D. 刷新目录** | "更新目录"、"refresh catalog" | 扫描 → 重建 CATALOG + INSTALLED.md |
 | **E. 溯源排查** | "溯源"、"trace origin" | 三级搜索 → 归类来源 → 更新 CATALOG。详见 [references/advanced-entries.md](references/advanced-entries.md) |
@@ -49,7 +48,7 @@ allowed-tools:
 
 克隆之前，用 WebFetch 读取仓库 README，搜索 `/plugin marketplace add`、`npx skills add` 等模式。
 
-找到 → Claude 走官方 marketplace，其他 5 host 用 `cp -r` 独立副本，跳到步骤 5。
+找到 → Claude 走官方 marketplace，其他 4 host 用 `cp -r` 独立副本（Kiro 始终用 `cp -r`），跳到步骤 5。
 未找到 → 继续常规流程。
 
 #### 1. 克隆并发现技能
@@ -69,9 +68,9 @@ find /tmp/<repo-name> -name "SKILL.md" -exec dirname {} \; | xargs -I{} basename
 
 询问是否加前缀（如 `pm-`）。前缀统一应用到所有 host。
 
-#### 4. 安装到全部 6 个 host
+#### 4. 安装到全部 5 个 host
 
-Claude 用 `cp -r` 实体复制，其他 5 host 用符号链接指向 Claude。
+Claude 用 `cp -r` 实体复制，Kiro 用 `cp -r` 实体复制（不支持 symlink），其他 3 host 用符号链接指向 Claude。
 
 **Windows 注意**：用 Python `os.symlink(source, target, target_is_directory=True)` 替代 `ln -s`。
 
@@ -138,7 +137,7 @@ origin = {
 ### 入口 B：从 Claude 同步到其他 host
 
 1. **检测新技能**：从 `npx skills add` 输出或用户指定的技能名
-2. **同步**：对每个 host 创建符号链接指向 Claude 目录
+2. **同步**：对 Kiro 用 `cp -r` 实体复制，对其他 host 创建符号链接指向 Claude 目录
 3. **更新目录**：同入口 A 步骤 5
 4. **溯源提示**（可选）：如有来源未明的 skill，提示跳转入口 E
 
